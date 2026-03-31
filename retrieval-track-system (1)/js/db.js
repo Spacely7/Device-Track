@@ -281,9 +281,8 @@ DB.seed();
 const ROLES = {
   Administrator:     { dashboard:true, issue:true, officer:true, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:true, analytics:true, performance:true, roles:true, sla:true, bulkimport:true, sms:true, mapview:true, notifications:true, audit:true },
   Supervisor:        { dashboard:true, issue:true, officer:true, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:true, analytics:true, performance:true, roles:false, sla:false, bulkimport:true, sms:true, mapview:true, notifications:true, audit:false },
-  'Field Officer':   { dashboard:true, issue:false, officer:false, fieldconfirm:true, retrieval:false, delayed:false, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },
-  'Retrieval Officer':{ dashboard:true, issue:false, officer:false, fieldconfirm:false, retrieval:true, delayed:true, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },
-};
+  'Field Officer':   { dashboard:true, issue:false, officer:false, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },
+  'Retrieval Officer':{ dashboard:true, issue:true, officer:true, fieldconfirm:false, retrieval:false, delayed:false, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },};
 function canAccess(page) {
   const s = DB.getSession();
   if (!s) return false;

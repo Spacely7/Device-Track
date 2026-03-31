@@ -13,7 +13,7 @@ function buildSidebar(activePage) {
     { section: 'Overview' },
     { id: 'dashboard',     icon: '🏠', label: 'Dashboard',          badge: null,        page: 'dashboard.html' },
     { section: 'Operations' },
-    { id: 'issue',         icon: '📤', label: 'Issue Device',        badge: null,        page: 'issue.html' },
+    { id: 'issue',         icon: '📤', label: 'Retrieve Device',        badge: null,        page: 'issue.html' },
     { id: 'officer',       icon: '👤', label: 'Officer Tracker',     badge: null,        page: 'officer.html' },
     { id: 'fieldconfirm',  icon: '✅', label: 'Field Confirmation',   badge: 'g',         page: 'fieldconfirm.html' },
     { section: 'Device Status' },
