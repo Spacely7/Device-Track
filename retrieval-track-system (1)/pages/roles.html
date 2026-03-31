@@ -51,7 +51,7 @@
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Phone / Email</label><input class="form-input" id="new-user-contact" placeholder="e.g. 233XXXXXXXXX"></div>
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Password</label><input class="form-input" type="password" id="new-user-pass" placeholder="Set a password"></div>
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Role</label>
-        <select class="form-select" id="new-user-role"><option>Administrator</option><option>Supervisor</option><option>Office Retrieval</option><option>Retrieval Officer</option></select></div>
+        <select class="form-select" id="new-user-role"><option>Administrator</option><option>Supervisor</option><option>Field Officer</option><option>Retrieval Officer</option></select></div>
       <div class="modal-actions">
         <button class="btn btn-primary" onclick="addUser()">Add User</button>
         <button class="btn btn-outline" onclick="closeModal('add-user-modal')">Cancel</button>
@@ -68,7 +68,7 @@
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Contact</label><input class="form-input" id="edit-user-contact"></div>
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">New Password</label><input class="form-input" type="password" id="edit-user-pass" placeholder="Leave blank to keep current"></div>
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Role</label>
-        <select class="form-select" id="edit-user-role"><option>Administrator</option><option>Supervisor</option><option>Office Retrieval</option><option>Retrieval Officer</option></select></div>
+        <select class="form-select" id="edit-user-role"><option>Administrator</option><option>Supervisor</option><option>Field Officer</option><option>Retrieval Officer</option></select></div>
       <div class="modal-actions">
         <button class="btn btn-primary" onclick="saveEditUser()">Save Changes</button>
         <button class="btn btn-outline" onclick="closeModal('edit-user-modal')">Cancel</button>
@@ -87,7 +87,7 @@ const ROLE_DEFS = [
   { name:'Administrator', color:'#e84040', bg:'rgba(232,64,64,.1)', perms:{ Dashboard:true, 'Issue Device':true, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:true, Analytics:true, Performance:true, 'Roles & Users':true, 'SLA Rules':true, 'Bulk Import':true, SMS:true } },
   { name:'Supervisor',    color:'#1a2b5c', bg:'rgba(26,43,92,.1)',  perms:{ Dashboard:true, 'Issue Device':true, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:true, Analytics:true, Performance:true, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':true, SMS:true } },
   { name:'Retrieval Officer', color:'#007a67', bg:'rgba(0,197,163,.1)', perms:{ Dashboard:true, 'Issue Device':true, 'Field Confirm':false, Retrieval:false, Delayed:false, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
-  { name:'Office Retrieval', color:'#8a4000', bg:'rgba(240,131,58,.12)', perms:{ Dashboard:true, 'Issue Device':false, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
+  { name:'Field Officer', color:'#8a4000', bg:'rgba(240,131,58,.12)', perms:{ Dashboard:true, 'Issue Device':false, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
 ];
 
 function renderRoles() {
