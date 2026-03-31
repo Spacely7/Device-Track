@@ -44,7 +44,7 @@
 <script src="../js/db.js"></script>
 <script src="../js/nav.js"></script>
 <script>
-const session = DB.requireAuth(['Administrator','Supervisor']);
+const session = DB.requireAuth(['Administrator','Supervisor','Retrieval Officer']);
 if (session) { DB.recalcDelays(); buildSidebar('officer'); }
 
 function loadOfficer() {

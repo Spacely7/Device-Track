@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Issue Device — Retrieval Track</title>
+<title>Retrieve Device — Retrieval Track</title>
 <link rel="stylesheet" href="../css/shared.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
 <aside class="sidebar" id="sidebar"></aside>
 <main class="main">
   <div class="page-header">
-    <div><div class="page-title">📤 Issue Device to Officer</div><div class="page-desc">Record device issuances and log incomplete pickup reasons.</div></div>
+    <div><div class="page-title">📤 Retrieve Device</div><div class="page-desc">Record device retrievals and log incomplete pickup reasons.</div></div>
     <div class="header-actions">
       <button class="btn btn-outline btn-sm" onclick="window.location.href='notifications.html'">🔔 Notifications</button>
     </div>
@@ -92,7 +92,7 @@
 <script src="../js/db.js"></script>
 <script src="../js/nav.js"></script>
 <script>
-const session = DB.requireAuth(['Administrator','Supervisor']);
+const session = DB.requireAuth(['Administrator','Supervisor','Retrieval Officer']);
 let selectedReasonTag = '';
 if (session) {
   DB.recalcDelays();
