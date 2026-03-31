@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retrieval — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">📥 Device Retrieval</div><div class="page-desc">Confirmed devices awaiting physical retrieval. Bulk-select and retrieve.</div></div>
+    <div class="header-actions">
+      <button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:17px;padding:5px;border-radius:7px;" onclick="render()">🔄</button>
+      <button class="btn btn-primary" id="ret-btn" onclick="retrieveSelected()" disabled>📦 Retrieve (<span id="ret-count">0</span>)</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" placeholder="Search Device ID, Agency, Regime..." oninput="render()" id="ret-search"></div>
+    <select class="filter-select" onchange="render()" id="ret-regime"><option value="">All Regimes</option><option>Warehouse</option><option>Freezones</option><option>Re-Export</option><option>Transit</option><option>Petroleum</option></select>
+    <select class="filter-select" onchange="render()" id="ret-officer"><option value="">All Officers</option><option>Yaw Boateng</option><option>Kojo Rexford</option><option>Elias Brown</option><option>Kofi Brew</option></select>
+  </div>
+  <div class="card">
+    <div class="select-all-bar"><input type="checkbox" id="ret-all" onchange="toggleAll()"><label for="ret-all" style="cursor:pointer;">Select All</label><span class="selected-count" id="ret-sel-lbl"></span></div>
+    <div class="table-wrap">
+      <table><thead><tr><th></th><th>Device ID</th><th>Date Issued</th><th>Expected Return</th><th>Field Confirmed</th><th>Agency Name</th><th>Destination</th><th>Regime</th><th>Status</th></tr></thead>
+      <tbody id="ret-body"></tbody></table>
+    </div>
+    <div class="pagination"><span id="ret-info"></span><div class="page-btns" id="ret-pages"></div></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor','Retrieval Officer']);
+let curPage = 1;
+if (session) { DB.recalcDelays(); buildSidebar('retrieval'); render(); }
+
+function getFiltered() {
+  const search = (document.getElementById('ret-search')?.value || '').toLowerCase();
+  const regime = document.getElementById('ret-regime')?.value || '';
+  return DB.getDevices().filter(d => {
+    if (d.status === 'Retrieved') return false;
+    if (d.isDelayed || !d.fieldConfirmed) return false;
+    if (regime && d.regime !== regime) return false;
+    if (search && !d.id.toLowerCase().includes(search) && !d.agency.toLowerCase().includes(search) && !d.regime.toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function render(pg) {
+  if (pg) curPage = pg;
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const start = (curPage - 1) * 10;
+  const page = filtered.slice(start, start + 10);
+  document.getElementById('ret-body').innerHTML = page.length
+    ? page.map(d => `<tr>
+        <td><input type="checkbox" class="ret-cb" value="${d.id}" onchange="updSel()"></td>
+        <td class="td-id" onclick="window.location.href='timeline.html?id=${d.id}'">${d.id}</td>
+        <td class="td-muted">${fmtDate(d.issued)}</td>
+        <td class="td-muted">${fmtDate(d.expectedReturn)}</td>
+        <td>${d.fieldConfirmed ? '<span style="color:var(--accent);">✅ Yes</span>' : '<span style="color:var(--yellow);">⏳ No</span>'}</td>
+        <td>${d.agency}</td>
+        <td class="td-muted">${d.dest}</td>
+        <td>${regBadge(d.regime)}</td>
+        <td><span class="badge badge-waiting">⏳ Awaiting</span></td>
+      </tr>`).join('')
+    : `<tr><td colspan="9"><div class="empty-state"><div style="font-size:32px;">📭</div><div style="margin-top:6px;">No devices awaiting retrieval.</div></div></td></tr>`;
+  document.getElementById('ret-info').textContent = `${Math.min(start+1,total)}–${Math.min(start+10,total)} of ${total}`;
+  renderPagination('ret', total, curPage, 'render');
+  updSel();
+}
+
+function toggleAll() {
+  const checked = document.getElementById('ret-all').checked;
+  document.querySelectorAll('.ret-cb').forEach(cb => cb.checked = checked);
+  updSel();
+}
+function updSel() {
+  const count = [...document.querySelectorAll('.ret-cb:checked')].length;
+  document.getElementById('ret-count').textContent = count;
+  document.getElementById('ret-btn').disabled = count === 0;
+  document.getElementById('ret-sel-lbl').textContent = count > 0 ? `${count} selected` : '';
+}
+
+function retrieveSelected() {
+  const ids = [...document.querySelectorAll('.ret-cb:checked')].map(cb => cb.value);
+  if (!ids.length) return;
+  ids.forEach(id => {
+    const d = DB.getDevice(id); if (!d) return;
+    const auditLog = [...(d.auditLog || []), { event:'Retrieved', detail:`Collected by ${session.name}`, time: fmtDate(DB.today()), color:'#00c5a3' }];
+    DB.updateDevice(id, { status:'Retrieved', isDelayed:false, retrievalOfficer: session.name, retrievalTime: new Date().toISOString(), auditLog });
+    DB.addAudit('DEVICE_RETRIEVED', `Device ${id} retrieved`, session.name, { deviceId: id });
+  });
+  DB.addNotification({ type:'retrieved', title:`${ids.length} Device(s) Retrieved`, desc:`${session.name} marked ${ids.length} device(s) as retrieved.`, officer: session.name, tag:'retrieved' });
+  showToast(`✅ ${ids.length} device(s) marked as retrieved`, 'success');
+  buildSidebar('retrieval');
+  render();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Log — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.audit-row{display:flex;align-items:flex-start;gap:14px;padding:12px 18px;border-bottom:1px solid var(--border);transition:background .1s;}
+.audit-row:hover{background:#f8f9fd;}
+body.dark .audit-row:hover{background:#1a2235;}
+.audit-action{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+.aa-login{background:rgba(0,197,163,.12);color:#007a67;}
+.aa-logout{background:rgba(107,0,170,.1);color:#6b00aa;}
+.aa-device{background:rgba(0,197,163,.1);color:#007a67;}
+.aa-user{background:rgba(26,43,92,.1);color:var(--navy);}
+.aa-sla{background:rgba(245,200,66,.2);color:#7a5800;}
+.aa-sms{background:rgba(240,131,58,.12);color:#8a4000;}
+.aa-delayed{background:rgba(232,64,64,.1);color:var(--red);}
+.aa-other{background:rgba(107,114,128,.1);color:#4b5563;}
+</style>
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">📜 Audit Log</div><div class="page-desc">Full system activity trail — every login, device change, and action recorded.</div></div>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm" onclick="exportAudit()">⬇️ Export</button>
+      <button class="btn btn-danger btn-sm" onclick="clearAudit()">🗑️ Clear</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" placeholder="Search by action, detail, actor..." oninput="render()" id="audit-search"></div>
+    <select class="filter-select" onchange="render()" id="audit-type">
+      <option value="">All Actions</option>
+      <option value="LOGIN">Logins</option>
+      <option value="DEVICE">Device Events</option>
+      <option value="USER">User Events</option>
+      <option value="SLA">SLA Changes</option>
+      <option value="SMS">SMS Sent</option>
+      <option value="ISSUANCE">Issuances</option>
+    </select>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">System Audit Trail</div>
+      <span id="audit-count" style="font-size:12px;color:var(--text-muted);"></span>
+    </div>
+    <div id="audit-list"></div>
+    <div class="pagination"><span id="audit-info"></span><div class="page-btns" id="audit-pages"></div></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator']);
+let curPage = 1;
+if (session) { DB.recalcDelays(); buildSidebar('audit'); render(); }
+
+function getFiltered() {
+  const search = (document.getElementById('audit-search')?.value || '').toLowerCase();
+  const type = document.getElementById('audit-type')?.value || '';
+  return DB.getAuditLog().filter(e => {
+    if (type && !e.action.includes(type)) return false;
+    if (search && !e.action.toLowerCase().includes(search) && !e.detail.toLowerCase().includes(search) && !(e.actor||'').toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function render(pg) {
+  if (pg) curPage = pg;
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const start = (curPage - 1) * 15;
+  const page = filtered.slice(start, start + 15);
+  document.getElementById('audit-count').textContent = total + ' entries';
+
+  const actionClass = a => {
+    if (a.includes('LOGIN') || a.includes('LOGOUT')) return 'aa-login';
+    if (a.includes('DEVICE') || a.includes('RETRIEV') || a.includes('FIELD') || a.includes('IMPORT')) return 'aa-device';
+    if (a.includes('USER')) return 'aa-user';
+    if (a.includes('SLA')) return 'aa-sla';
+    if (a.includes('SMS')) return 'aa-sms';
+    if (a.includes('ISSUANCE')) return 'aa-device';
+    return 'aa-other';
+  };
+
+  document.getElementById('audit-list').innerHTML = page.length
+    ? page.map(e => `<div class="audit-row">
+        <div style="flex-shrink:0;margin-top:2px;">
+          <span class="audit-action ${actionClass(e.action)}">${e.action.replace(/_/g,' ')}</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;">${e.detail}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">👤 ${e.actor || 'System'}</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;">${fmtDateTime(e.timestamp)}</div>
+      </div>`).join('')
+    : `<div class="empty-state"><div style="font-size:32px;">📭</div><div>No audit entries match your filter.</div></div>`;
+
+  document.getElementById('audit-info').textContent = `${Math.min(start+1,total)}–${Math.min(start+15,total)} of ${total}`;
+  renderPagination('audit', total, curPage, 'render');
+}
+
+function exportAudit() {
+  const f = getFiltered();
+  const hdr = ['Timestamp','Action','Detail','Actor'];
+  const rows = f.map(e => [fmtDateTime(e.timestamp), e.action, e.detail, e.actor||'System']);
+  const csv = [hdr, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = 'audit-log.csv'; a.click();
+  showToast('Audit log exported', 'success');
+}
+
+function clearAudit() {
+  if (!confirm('Clear all audit log entries? This cannot be undone.')) return;
+  localStorage.removeItem(DB.KEYS.AUDIT_LOG);
+  DB.addAudit('AUDIT_CLEARED', 'Audit log cleared by administrator', session.name);
+  showToast('Audit log cleared', 'info');
+  render();
+}
+</script>
+</body>
+</html>

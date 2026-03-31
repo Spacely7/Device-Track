@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delayed Devices — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">⚠️ Delayed Devices</div><div class="page-desc">Devices overdue per their regime's SLA threshold. Auto-escalated from Retrieval.</div></div>
+    <div class="header-actions">
+      <button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:17px;padding:5px;border-radius:7px;" onclick="render()">🔄</button>
+      <button class="btn btn-danger" id="del-btn" onclick="retrieveSelected()" disabled>📦 Retrieve (<span id="del-count">0</span>)</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" placeholder="Search Device ID, Agency, Regime..." oninput="render()" id="del-search"></div>
+    <select class="filter-select" onchange="render()" id="del-regime"><option value="">All Regimes</option><option>Warehouse</option><option>Freezones</option><option>Re-Export</option><option>Transit</option><option>Petroleum</option></select>
+  </div>
+  <div class="card">
+    <div class="select-all-bar"><input type="checkbox" id="del-all" onchange="toggleAll()"><label for="del-all" style="cursor:pointer;">Select All</label><span class="selected-count" id="del-sel-lbl"></span></div>
+    <div class="table-wrap">
+      <table><thead><tr><th></th><th>Device ID</th><th>Date Issued</th><th>Days Overdue</th><th>Field Confirmed</th><th>Agency Name</th><th>Destination</th><th>Regime</th><th>Status</th></tr></thead>
+      <tbody id="del-body"></tbody></table>
+    </div>
+    <div class="pagination"><span id="del-info"></span><div class="page-btns" id="del-pages"></div></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor','Retrieval Officer']);
+let curPage = 1;
+if (session) { DB.recalcDelays(); buildSidebar('delayed'); render(); }
+
+function getFiltered() {
+  const search = (document.getElementById('del-search')?.value || '').toLowerCase();
+  const regime = document.getElementById('del-regime')?.value || '';
+  return DB.getDevices().filter(d => {
+    if (!d.isDelayed || d.status === 'Retrieved') return false;
+    if (regime && d.regime !== regime) return false;
+    if (search && !d.id.toLowerCase().includes(search) && !d.agency.toLowerCase().includes(search) && !d.regime.toLowerCase().includes(search)) return false;
+    return true;
+  }).sort((a, b) => b.daysOverdue - a.daysOverdue);
+}
+
+function render(pg) {
+  if (pg) curPage = pg;
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const start = (curPage - 1) * 10;
+  const page = filtered.slice(start, start + 10);
+  document.getElementById('del-body').innerHTML = page.length
+    ? page.map(d => `<tr>
+        <td><input type="checkbox" class="del-cb" value="${d.id}" onchange="updSel()"></td>
+        <td class="td-id" onclick="window.location.href='timeline.html?id=${d.id}'">${d.id}</td>
+        <td class="td-muted">${fmtDate(d.issued)}</td>
+        <td><span class="overdue-badge">${d.daysOverdue}</span></td>
+        <td>${d.fieldConfirmed ? '<span style="color:var(--accent);">✅</span>' : '<span style="color:var(--yellow);">⏳</span>'}</td>
+        <td>${d.agency}</td>
+        <td class="td-muted">${d.dest}</td>
+        <td>${regBadge(d.regime)}</td>
+        <td><span class="badge badge-delayed">⏰ Delayed</span></td>
+      </tr>`).join('')
+    : `<tr><td colspan="9"><div class="empty-state"><div style="font-size:32px;">✅</div><div style="margin-top:6px;">No delayed devices. All clear!</div></div></td></tr>`;
+  document.getElementById('del-info').textContent = `${Math.min(start+1,total)}–${Math.min(start+10,total)} of ${total}`;
+  renderPagination('del', total, curPage, 'render');
+  updSel();
+}
+
+function toggleAll() {
+  const checked = document.getElementById('del-all').checked;
+  document.querySelectorAll('.del-cb').forEach(cb => cb.checked = checked);
+  updSel();
+}
+function updSel() {
+  const count = [...document.querySelectorAll('.del-cb:checked')].length;
+  document.getElementById('del-count').textContent = count;
+  document.getElementById('del-btn').disabled = count === 0;
+  document.getElementById('del-sel-lbl').textContent = count > 0 ? `${count} selected` : '';
+}
+
+function retrieveSelected() {
+  const ids = [...document.querySelectorAll('.del-cb:checked')].map(cb => cb.value);
+  if (!ids.length) return;
+  ids.forEach(id => {
+    const d = DB.getDevice(id); if (!d) return;
+    const auditLog = [...(d.auditLog || []), { event:'Retrieved (Delayed)', detail:`Collected by ${session.name} (was overdue ${d.daysOverdue} days)`, time: fmtDate(DB.today()), color:'#00c5a3' }];
+    DB.updateDevice(id, { status:'Retrieved', isDelayed:false, retrievalOfficer: session.name, retrievalTime: new Date().toISOString(), auditLog });
+    DB.addAudit('DEVICE_RETRIEVED', `Delayed device ${id} retrieved`, session.name, { deviceId: id, wasOverdue: d.daysOverdue });
+  });
+  showToast(`✅ ${ids.length} delayed device(s) retrieved`, 'success');
+  buildSidebar('delayed');
+  render();
+}
+</script>
+</body>
+</html>

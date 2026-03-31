@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifications — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.notif-tabs{display:flex;gap:3px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:3px;}
+.notif-tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .16s;border:none;background:none;color:var(--text-muted);}
+.notif-tab.active{background:var(--navy);color:#fff;}
+.notif-footer{display:flex;align-items:center;gap:9px;margin-top:7px;flex-wrap:wrap;}
+.notif-time{font-size:10px;color:var(--text-muted);}
+.ntag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;}
+.ntag-assignment{background:rgba(0,197,163,.12);color:#007a67;}
+.ntag-upcoming{background:rgba(245,200,66,.2);color:#7a5800;}
+.ntag-delayed{background:rgba(232,64,64,.1);color:var(--red);}
+.ntag-retrieved{background:rgba(0,197,163,.1);color:#007a67;}
+.notif-extra{font-size:11px;color:var(--text-muted);margin-top:5px;padding:5px 9px;background:#f5f7ff;border-radius:7px;}
+body.dark .notif-extra{background:#0e1628;}
+.assign-off{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .16s;margin-bottom:7px;}
+.assign-off:hover,.assign-off.picked{border-color:var(--accent);background:rgba(0,197,163,.05);}
+</style>
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">🔔 Notifications</div><div class="page-desc">Alerts, assignments and upcoming retrieval reminders.</div></div>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm" onclick="markAll()">✓ Mark all read</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('assign-modal')">📤 Assign Retrieval</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div class="notif-tabs">
+      <button class="notif-tab active" onclick="switchTab(this,'all')">All</button>
+      <button class="notif-tab" onclick="switchTab(this,'assignment')">Assignments</button>
+      <button class="notif-tab" onclick="switchTab(this,'upcoming')">Upcoming</button>
+      <button class="notif-tab" onclick="switchTab(this,'delayed')">Alerts</button>
+    </div>
+    <span id="notif-count-lbl" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div class="card"><div id="notif-list"></div></div>
+
+  <!-- Assign Modal -->
+  <div class="modal-overlay" id="assign-modal">
+    <div class="modal">
+      <div class="modal-title">📤 Assign Retrieval to Officer</div>
+      <div class="modal-sub">Select an officer and agency to send an assignment notification.</div>
+      <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Agency</label>
+        <select class="form-select" id="am-agency"><option value="">Select agency</option>
+          <option>COMPASS POWER AFRICA LTD</option><option>KOMENDA SUGAR FACTORY</option><option>RONOR MOTORS</option>
+          <option>WEB HELP GHANA</option><option>DAILY FOOD</option><option>WESTERN BEVERAGES LTD</option>
+          <option>CAVE AND GARDEN</option><option>GLOBAL POLY GHANA</option><option>MIRO TIMBER</option>
+          <option>KING RECYCLING SOLUTIONS LTD</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Scheduled Date</label><input type="date" class="form-input" id="am-date"></div>
+      <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Priority</label>
+        <select class="form-select" id="am-priority"><option>Normal</option><option>Urgent</option><option>High</option><option>Low</option></select>
+      </div>
+      <label class="form-label" style="display:block;margin-bottom:9px;">Select Officer</label>
+      <div id="am-officers">
+        <div class="assign-off" onclick="pickOff(this,'Yaw Boateng')"><div style="width:34px;height:34px;border-radius:50%;background:#1a2b5c;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;flex-shrink:0;">YB</div><div><div style="font-weight:700;font-size:13px;">Yaw Boateng</div><div style="font-size:11px;color:var(--text-muted);">+233 597 563 674</div></div></div>
+        <div class="assign-off" onclick="pickOff(this,'Kojo Rexford')"><div style="width:34px;height:34px;border-radius:50%;background:#007a67;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;flex-shrink:0;">KR</div><div><div style="font-weight:700;font-size:13px;">Kojo Rexford</div><div style="font-size:11px;color:var(--text-muted);">+233 206 748 677</div></div></div>
+        <div class="assign-off" onclick="pickOff(this,'Elias Brown')"><div style="width:34px;height:34px;border-radius:50%;background:#8a4000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;flex-shrink:0;">EB</div><div><div style="font-weight:700;font-size:13px;">Elias Brown</div><div style="font-size:11px;color:var(--text-muted);">+233 244 675 874</div></div></div>
+        <div class="assign-off" onclick="pickOff(this,'Kofi Brew')"><div style="width:34px;height:34px;border-radius:50%;background:#6b00aa;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;flex-shrink:0;">KB</div><div><div style="font-weight:700;font-size:13px;">Kofi Brew</div><div style="font-size:11px;color:var(--text-muted);">+233 509 765 467</div></div></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="sendAssignment()">📤 Send Assignment</button>
+        <button class="btn btn-outline" onclick="closeModal('assign-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth();
+let tabState = 'all', amOfficer = '';
+if (session) {
+  DB.recalcDelays();
+  buildSidebar('notifications');
+  document.getElementById('am-date').value = DB.fmtISO(DB.addDays(new Date(DB.today()), 1));
+  render();
+}
+
+function getFilteredNotifs() {
+  const all = DB.getNotifications();
+  if (tabState === 'all') return all;
+  if (tabState === 'delayed') return all.filter(n => n.tag === 'delayed' || n.tag === 'incomplete');
+  return all.filter(n => n.tag === tabState);
+}
+
+function render() {
+  const f = getFilteredNotifs();
+  document.getElementById('notif-count-lbl').textContent = f.length + ' notification' + (f.length !== 1 ? 's' : '');
+  const icons = { assign:'📤', upcoming:'📅', delayed:'⏰', retrieved:'✅', incomplete:'⚠️' };
+  const niClass = { assign:'ni-assign', upcoming:'ni-upcoming', delayed:'ni-delayed', retrieved:'ni-retrieved', incomplete:'ni-incomplete' };
+  document.getElementById('notif-list').innerHTML = f.length
+    ? f.map(n => `<div class="notif-item${n.unread?' unread':''}" onclick="markRead('${n.id}')">
+        <div class="notif-icon-wrap ${niClass[n.type]||'ni-assign'}">${icons[n.type]||'🔔'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="notif-title">${n.title}</div>
+          <div class="notif-desc">${n.desc}</div>
+          ${n.extra ? `<div class="notif-extra">${n.extra}</div>` : ''}
+          <div class="notif-footer">
+            <span class="notif-time">🕐 ${fmtRelTime(n.createdAt)}</span>
+            <span class="ntag ntag-${n.tag||'assignment'}">${n.tag||'notification'}</span>
+            ${n.officer ? `<span style="font-size:10px;color:var(--text-muted);">👤 ${n.officer}</span>` : ''}
+          </div>
+        </div>
+        ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
+      </div>`).join('')
+    : `<div class="empty-state"><div style="font-size:36px;">🔕</div><div style="margin-top:8px;">No notifications here.</div></div>`;
+}
+
+function markRead(id) { DB.markNotifRead(id); buildSidebar('notifications'); render(); }
+function markAll() { DB.markAllNotifsRead(); buildSidebar('notifications'); render(); showToast('All marked as read', 'success'); }
+function switchTab(el, tab) { document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active')); el.classList.add('active'); tabState = tab; render(); }
+function pickOff(el, name) { document.querySelectorAll('.assign-off').forEach(e => e.classList.remove('picked')); el.classList.add('picked'); amOfficer = name; }
+function sendAssignment() {
+  const agency = document.getElementById('am-agency').value;
+  const date = document.getElementById('am-date').value;
+  const priority = document.getElementById('am-priority').value;
+  if (!amOfficer) { showToast('Select an officer', 'error'); return; }
+  if (!agency) { showToast('Select an agency', 'error'); return; }
+  DB.addNotification({ type:'assign', title:`Assignment – ${amOfficer}`, desc:`${amOfficer} assigned to retrieve from ${agency} on ${fmtDate(date)}.`, officer:amOfficer, agency, tag:'assignment', extra:`Priority: ${priority} · Date: ${fmtDate(date)}` });
+  closeModal('assign-modal');
+  showToast(`✅ Assignment sent to ${amOfficer}`, 'success');
+  buildSidebar('notifications');
+  render();
+}
+</script>
+</body>
+</html>

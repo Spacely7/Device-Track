@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLA Rules — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.sla-rule-card{background:#f5f7fc;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+body.dark .sla-rule-card{background:#0e1628;border-color:var(--dark-border);}
+.sla-icon{font-size:22px;flex-shrink:0;}
+.sla-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+.sla-desc{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.sla-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.sla-input{width:60px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;text-align:center;outline:none;background:var(--card);color:var(--text);transition:border .16s;}
+.sla-input:focus{border-color:var(--accent);}
+</style>
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">⏱️ SLA Rules</div><div class="page-desc">Configure delay thresholds per regime and set up automatic escalation alerts.</div></div>
+    <button class="btn btn-accent btn-sm" onclick="saveSLA()">💾 Save Rules</button>
+  </div>
+
+  <div class="card" style="padding:22px;margin-bottom:16px;">
+    <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:6px;">Delay Thresholds by Regime</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">Devices overdue beyond these thresholds automatically move to the Delayed queue and trigger alerts.</p>
+    <div id="sla-rules"></div>
+  </div>
+
+  <div class="card" style="padding:22px;margin-bottom:16px;">
+    <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:6px;">Upcoming Retrieval Alerts</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">Send automatic notifications to officers X days before a device's expected return date.</p>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <label class="form-label">Alert me</label>
+      <input class="form-input" type="number" id="sla-alert-days" value="3" style="width:70px;">
+      <label class="form-label">days before expected return</label>
+      <label class="sla-toggle"><input type="checkbox" id="sla-alert-on" checked><span class="sla-slider"></span></label>
+      <span style="font-size:13px;color:var(--text-muted);">Active</span>
+    </div>
+  </div>
+
+  <div class="card" style="padding:22px;">
+    <h3 style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:14px;">Current SLA Status</h3>
+    <div id="sla-status"></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor']);
+if (session) { DB.recalcDelays(); buildSidebar('sla'); renderSLA(); renderStatus(); }
+
+const REGIME_ICONS = { Warehouse:'🏭', Freezones:'❄️', 'Re-Export':'📤', Transit:'🚛', Petroleum:'⛽' };
+
+function renderSLA() {
+  const rules = DB.getSLA();
+  document.getElementById('sla-rules').innerHTML = DB.REGIMES.map(r => `
+    <div class="sla-rule-card">
+      <div class="sla-icon">${REGIME_ICONS[r]}</div>
+      <div><div class="sla-name">${r}</div><div class="sla-desc">Escalate to Delayed after this many days overdue</div></div>
+      <div class="sla-actions">
+        <input class="sla-input" type="number" id="sla-${r.replace(/[^a-z]/gi,'')}" value="${rules[r]}" min="1" max="30">
+        <span style="font-size:12px;color:var(--text-muted);">days</span>
+        <label class="sla-toggle"><input type="checkbox" checked><span class="sla-slider"></span></label>
+      </div>
+    </div>`).join('');
+}
+
+function saveSLA() {
+  const rules = {};
+  DB.REGIMES.forEach(r => {
+    const el = document.getElementById('sla-' + r.replace(/[^a-z]/gi, ''));
+    if (el) rules[r] = parseInt(el.value) || 3;
+  });
+  DB.setSLA(rules);
+  DB.recalcDelays();
+  DB.addAudit('SLA_UPDATED', 'SLA rules updated', session.name, { rules });
+  showToast('✅ SLA rules saved and applied', 'success');
+  renderStatus();
+  buildSidebar('sla');
+}
+
+function renderStatus() {
+  const devices = DB.getDevices().filter(d => d.status !== 'Retrieved');
+  const sla = DB.getSLA();
+  const byRegime = {};
+  DB.REGIMES.forEach(r => { byRegime[r] = { total:0, delayed:0, threshold: sla[r] }; });
+  devices.forEach(d => { if (byRegime[d.regime]) { byRegime[d.regime].total++; if (d.isDelayed) byRegime[d.regime].delayed++; } });
+  document.getElementById('sla-status').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">` +
+    DB.REGIMES.map(r => {
+      const data = byRegime[r];
+      const pct = data.total > 0 ? (data.delayed / data.total * 100).toFixed(0) : 0;
+      const color = pct > 30 ? 'var(--red)' : pct > 10 ? 'var(--yellow)' : 'var(--accent)';
+      return `<div class="chart-card" style="padding:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:18px;">${REGIME_ICONS[r]}</span><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;">${r}</span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Threshold: ${data.threshold} days · ${data.total} active devices</div>
+        <div style="font-size:20px;font-family:'Syne',sans-serif;font-weight:800;color:${color};">${data.delayed}<span style="font-size:12px;font-weight:400;color:var(--text-muted);"> delayed</span></div>
+        <div class="bar-track" style="margin-top:8px;"><div class="bar-fill" style="width:${pct}%;background:${color};"></div></div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+</script>
+</body>
+</html>

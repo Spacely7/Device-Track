@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Officer Performance — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.perf-officer-card{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:18px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
+.perf-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.perf-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0;}
+.perf-name{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;}
+.perf-phone{font-size:12px;color:var(--text-muted);}
+.perf-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:14px;}
+.perf-bar-wrap{margin-top:4px;}
+.perf-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.score-circle{width:52px;height:52px;flex-shrink:0;}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:800;margin-left:auto;}
+.rank-1{background:rgba(245,200,66,.3);color:#8a6c00;}
+.rank-2{background:rgba(200,200,200,.3);color:#666;}
+.rank-3{background:rgba(240,131,58,.2);color:#8a4000;}
+</style>
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">🏆 Officer Performance Scorecard</div><div class="page-desc">Retrieval rates, on-time performance, and incomplete pickup frequency per officer.</div></div>
+  </div>
+  <div id="perf-content"></div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor']);
+if (session) { DB.recalcDelays(); buildSidebar('performance'); render(); }
+
+function render() {
+  const officers = Object.keys(DB.OFFICERS_DATA);
+  const issuances = DB.getIssuances();
+  const devices = DB.getDevices();
+
+  const scoredOfficers = officers.map(o => {
+    const myI = issuances.filter(i => i.officer === o);
+    const myRet = devices.filter(d => d.retrievalOfficer === o);
+    const totCol = myI.reduce((a, b) => a + b.collected, 0);
+    const totQ = myI.reduce((a, b) => a + b.qty, 0);
+    const totP = myI.reduce((a, b) => a + b.pending, 0);
+    const incomplete = myI.filter(i => i.pending > 0).length;
+    const rate = totQ > 0 ? Math.round(totCol / totQ * 100) : 0;
+    const score = Math.min(100, Math.max(0, rate - incomplete * 5 + myRet.length * 3));
+    return { o, myI, myRet, totCol, totQ, totP, incomplete, rate, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const rankIcons = ['🥇','🥈','🥉'];
+  document.getElementById('perf-content').innerHTML = scoredOfficers.map(({ o, myI, myRet, totCol, totQ, totP, incomplete, rate, score }, idx) => {
+    const info = DB.OFFICERS_DATA[o];
+    const scoreColor = score >= 80 ? '#00c5a3' : score >= 50 ? '#f5c842' : '#e84040';
+    return `<div class="perf-officer-card">
+      <div class="perf-header">
+        <div class="perf-avatar" style="background:${info.color}">${info.init}</div>
+        <div style="flex:1;">
+          <div class="perf-name">${o} ${idx < 3 ? rankIcons[idx] : ''}</div>
+          <div class="perf-phone">+${info.phone}</div>
+        </div>
+        <svg class="score-circle" viewBox="0 0 52 52">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="var(--border)" stroke-width="5"/>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="${scoreColor}" stroke-width="5" stroke-dasharray="${(score/100*138.2).toFixed(1)} 138.2" stroke-linecap="round" transform="rotate(-90,26,26)"/>
+          <text x="26" y="30" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="11" fill="var(--text)">${score}</text>
+        </svg>
+      </div>
+      <div class="perf-stats">
+        <div class="perf-stat"><div class="perf-stat-val" style="color:var(--navy)">${myI.length}</div><div class="perf-stat-lbl">Issuances</div></div>
+        <div class="perf-stat"><div class="perf-stat-val" style="color:var(--accent)">${totCol}</div><div class="perf-stat-lbl">Collected</div></div>
+        <div class="perf-stat"><div class="perf-stat-val" style="color:var(--red)">${totP}</div><div class="perf-stat-lbl">Pending</div></div>
+        <div class="perf-stat"><div class="perf-stat-val" style="color:var(--accent2)">${incomplete}</div><div class="perf-stat-lbl">Incomplete</div></div>
+        <div class="perf-stat"><div class="perf-stat-val" style="color:#007a67">${myRet.length}</div><div class="perf-stat-lbl">Retrievals</div></div>
+      </div>
+      <div class="perf-bar-wrap">
+        <div class="perf-bar-label"><span>Collection Rate</span><span>${rate}%</span></div>
+        <div class="perf-bar-track"><div class="perf-bar-fill" style="width:${rate}%;background:${scoreColor};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

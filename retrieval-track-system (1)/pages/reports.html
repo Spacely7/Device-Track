@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main" id="print-root">
+  <div class="page-header">
+    <div><div class="page-title">📋 Reports</div><div class="page-desc">Filterable device records with CSV export and print-ready layout.</div></div>
+    <div class="header-actions">
+      <input type="date" class="form-input" id="rpt-from" style="width:auto;" onchange="render()">
+      <span style="color:var(--text-muted);padding:0 4px;">→</span>
+      <input type="date" class="form-input" id="rpt-to" style="width:auto;" onchange="render()">
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇️ CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" placeholder="Search by Device ID, Agency, Regime..." oninput="render()" id="rpt-search"></div>
+    <select class="filter-select" onchange="render()" id="rpt-regime"><option value="">All Regimes</option><option>Warehouse</option><option>Freezones</option><option>Re-Export</option><option>Transit</option><option>Petroleum</option></select>
+    <select class="filter-select" onchange="render()" id="rpt-status"><option value="">All Status</option><option>Awaiting Retrieval</option><option>Retrieved</option><option>Delayed</option></select>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Device Records (Filtered)</div><span id="rpt-lbl" style="font-size:12px;color:var(--text-muted);"></span></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Device ID</th><th>Date Issued</th><th>Expected Return</th><th>Field Confirmed</th><th>Agency</th><th>Destination</th><th>Regime</th><th>Status</th><th>Officer</th><th>Retrieved At</th></tr></thead>
+      <tbody id="rpt-body"></tbody></table>
+    </div>
+    <div class="pagination"><span id="rpt-info"></span><div class="page-btns" id="rpt-pages"></div></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor']);
+let curPage = 1;
+if (session) {
+  DB.recalcDelays();
+  buildSidebar('reports');
+  const today = new Date(DB.today());
+  const from = new Date(today); from.setDate(from.getDate() - 30);
+  document.getElementById('rpt-from').value = DB.fmtISO(from);
+  document.getElementById('rpt-to').value = DB.fmtISO(today);
+  render();
+}
+
+function getFiltered() {
+  const from = document.getElementById('rpt-from').value;
+  const to = document.getElementById('rpt-to').value;
+  const search = (document.getElementById('rpt-search')?.value || '').toLowerCase();
+  const regime = document.getElementById('rpt-regime')?.value || '';
+  const status = document.getElementById('rpt-status')?.value || '';
+  return DB.getDevices().filter(d => {
+    if (from && d.issued < from) return false;
+    if (to && d.issued > to) return false;
+    if (regime && d.regime !== regime) return false;
+    if (status && d.status !== status) return false;
+    if (search && !d.id.toLowerCase().includes(search) && !d.agency.toLowerCase().includes(search) && !d.regime.toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function render(pg) {
+  if (pg) curPage = pg;
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const start = (curPage - 1) * 10;
+  const page = filtered.slice(start, start + 10);
+  document.getElementById('rpt-lbl').textContent = total + ' records';
+  document.getElementById('rpt-body').innerHTML = page.length
+    ? page.map(d => {
+        const sc = d.status === 'Retrieved' ? 'badge-retrieved' : d.isDelayed ? 'badge-delayed' : 'badge-waiting';
+        return `<tr>
+          <td class="td-id" onclick="window.location.href='timeline.html?id=${d.id}'">${d.id}</td>
+          <td class="td-muted">${fmtDate(d.issued)}</td>
+          <td class="td-muted">${fmtDate(d.expectedReturn)}</td>
+          <td style="text-align:center;">${d.fieldConfirmed ? '✅' : '⏳'}</td>
+          <td>${d.agency}</td>
+          <td class="td-muted">${d.dest}</td>
+          <td>${regBadge(d.regime)}</td>
+          <td><span class="badge ${sc}">${d.status}</span></td>
+          <td class="td-muted">${d.retrievalOfficer || 'N/A'}</td>
+          <td class="td-muted">${d.retrievalTime ? fmtDateTime(d.retrievalTime) : 'N/A'}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="10"><div class="empty-state"><div style="font-size:32px;">📭</div><div>No records for selected filters.</div></div></td></tr>`;
+  document.getElementById('rpt-info').textContent = `${Math.min(start+1,total)}–${Math.min(start+10,total)} of ${total}`;
+  renderPagination('rpt', total, curPage, 'render');
+}
+
+function exportCSV() {
+  const f = getFiltered();
+  const hdr = ['Device ID','Date Issued','Expected Return','Field Confirmed','Agency','Destination','Regime','Status','Retrieval Officer','Retrieved At'];
+  const rows = f.map(d => [d.id, fmtDate(d.issued), fmtDate(d.expectedReturn), d.fieldConfirmed?'Yes':'No', d.agency, d.dest, d.regime, d.status, d.retrievalOfficer||'N/A', d.retrievalTime||'N/A']);
+  const csv = [hdr, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+  a.download = 'retrieval-report.csv'; a.click();
+  showToast('✅ CSV exported', 'success');
+}
+</script>
+</body>
+</html>

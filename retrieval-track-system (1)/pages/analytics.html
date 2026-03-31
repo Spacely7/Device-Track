@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">📊 Device Analytics</div><div class="page-desc">Visualise key metrics across all device operations.</div></div>
+  </div>
+  <div class="filter-bar">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" placeholder="Filter by Device ID, Agency..." oninput="render()" id="ana-search"></div>
+    <select class="filter-select" onchange="render()" id="ana-regime"><option value="">All Regimes</option><option>Warehouse</option><option>Freezones</option><option>Re-Export</option><option>Transit</option><option>Petroleum</option></select>
+  </div>
+  <div class="stats-grid" id="ana-stats"></div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">Devices by Status</div><div class="donut-wrap"><svg id="ana-donut" width="130" height="130" viewBox="0 0 130 130"></svg><div class="legend-list" id="ana-legend"></div></div></div>
+    <div class="chart-card"><div class="chart-title">By Regime</div><div class="bar-chart" id="ana-regime-bars"></div></div>
+    <div class="chart-card"><div class="chart-title">By Agency (Top 8)</div><div class="bar-chart" id="ana-agency-bars"></div></div>
+    <div class="chart-card"><div class="chart-title">Retrieved vs Delayed (6 Months)</div><canvas id="ana-month" width="320" height="180" style="width:100%;height:auto;"></canvas></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor']);
+if (session) { DB.recalcDelays(); buildSidebar('analytics'); render(); }
+
+function getFiltered() {
+  const search = (document.getElementById('ana-search')?.value || '').toLowerCase();
+  const regime = document.getElementById('ana-regime')?.value || '';
+  return DB.getDevices().filter(d => {
+    if (regime && d.regime !== regime) return false;
+    if (search && !d.id.toLowerCase().includes(search) && !d.agency.toLowerCase().includes(search)) return false;
+    return true;
+  });
+}
+
+function render() {
+  const data = getFiltered();
+  const total = data.length;
+  const retrieved = data.filter(d => d.status === 'Retrieved').length;
+  const delayed = data.filter(d => d.isDelayed && d.status !== 'Retrieved').length;
+  const awaiting = data.filter(d => d.status === 'Awaiting Retrieval' && !d.isDelayed).length;
+  const unconfirmed = data.filter(d => !d.fieldConfirmed && d.status !== 'Retrieved').length;
+
+  document.getElementById('ana-stats').innerHTML = `
+    <div class="stat-card c-navy"><div class="stat-icon">📦</div><div class="stat-value">${total}</div><div class="stat-label">Total Devices</div></div>
+    <div class="stat-card c-accent"><div class="stat-icon">✅</div><div class="stat-value">${retrieved}</div><div class="stat-label">Retrieved</div></div>
+    <div class="stat-card c-red"><div class="stat-icon">⚠️</div><div class="stat-value">${delayed}</div><div class="stat-label">Delayed</div></div>
+    <div class="stat-card c-yellow"><div class="stat-icon">⏳</div><div class="stat-value">${awaiting}</div><div class="stat-label">Awaiting</div></div>
+    <div class="stat-card c-orange"><div class="stat-icon">🔍</div><div class="stat-value">${unconfirmed}</div><div class="stat-label">Unconfirmed</div></div>
+    <div class="stat-card c-purple"><div class="stat-icon">📈</div><div class="stat-value">${total > 0 ? Math.round(retrieved/total*100) : 0}%</div><div class="stat-label">Retrieval Rate</div></div>`;
+
+  drawDonut('ana-donut', 'ana-legend', [
+    { label:'Awaiting', val:awaiting, color:'#f0833a' },
+    { label:'Retrieved', val:retrieved, color:'#00c5a3' },
+    { label:'Delayed', val:delayed, color:'#e84040' },
+    { label:'Unconfirmed', val:unconfirmed, color:'#f5c842' }
+  ], total);
+
+  const rc = {}; DB.REGIMES.forEach(r => rc[r] = 0); data.forEach(d => rc[d.regime] = (rc[d.regime]||0)+1);
+  const maxR = Math.max(...Object.values(rc), 1);
+  document.getElementById('ana-regime-bars').innerHTML = DB.REGIMES.map(r =>
+    `<div class="bar-row"><div class="bar-label">${r}</div><div class="bar-track"><div class="bar-fill" style="width:${(rc[r]/maxR*100).toFixed(1)}%;background:${DB.REG_COLORS[r]};"></div></div><div class="bar-count">${rc[r]}</div></div>`
+  ).join('');
+
+  const ac = {}; data.forEach(d => ac[d.agency] = (ac[d.agency]||0)+1);
+  const sA = Object.entries(ac).sort((a, b) => b[1]-a[1]).slice(0, 8);
+  const maxA = Math.max(...sA.map(x => x[1]), 1);
+  document.getElementById('ana-agency-bars').innerHTML = sA.map(([n, c]) =>
+    `<div class="bar-row"><div class="bar-label" title="${n}">${n.length > 18 ? n.slice(0,18)+'…' : n}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxA*100).toFixed(1)}%;background:var(--navy-mid);"></div></div><div class="bar-count">${c}</div></div>`
+  ).join('');
+
+  drawMonthChart('ana-month', data);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🏠 Dashboard</div>
+      <div class="page-desc">Live overview of port device operations — <span id="dash-date"></span></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-accent btn-sm" onclick="window.location.href='issue.html'">+ Issue Device</button>
+    </div>
+  </div>
+  <div class="stats-grid" id="dash-stats"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;margin-bottom:18px;">
+    <div class="chart-card">
+      <div class="chart-title">Devices by Status</div>
+      <div class="donut-wrap"><svg id="dash-donut" width="130" height="130" viewBox="0 0 130 130"></svg><div class="legend-list" id="dash-legend"></div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Devices by Regime</div>
+      <div class="bar-chart" id="dash-regime-bars"></div>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <div class="chart-title">Retrieved vs Delayed (Last 6 Months)</div>
+      <canvas id="dash-month-chart" width="600" height="160" style="width:100%;height:auto;"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">⚡ Recent Activity</div></div>
+    <div id="dash-activity"></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth();
+if (session) {
+  DB.recalcDelays();
+  buildSidebar('dashboard');
+
+  const devices = DB.getDevices();
+  const issuances = DB.getIssuances();
+  document.getElementById('dash-date').textContent = fmtDate(DB.today());
+
+  const total = devices.length;
+  const retrieved = devices.filter(d => d.status === 'Retrieved').length;
+  const delayed = devices.filter(d => d.isDelayed && d.status !== 'Retrieved').length;
+  const awaiting = devices.filter(d => d.status === 'Awaiting Retrieval' && !d.isDelayed).length;
+  const unconfirmed = devices.filter(d => !d.fieldConfirmed && d.status !== 'Retrieved').length;
+  const rateVal = total > 0 ? Math.round(retrieved / total * 100) : 0;
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card c-navy"><div class="stat-icon">📦</div><div class="stat-value">${total}</div><div class="stat-label">Total Devices</div></div>
+    <div class="stat-card c-accent"><div class="stat-icon">✅</div><div class="stat-value">${retrieved}</div><div class="stat-label">Retrieved</div><div class="stat-sub up">↑ ${rateVal}% retrieval rate</div></div>
+    <div class="stat-card c-red"><div class="stat-icon">⚠️</div><div class="stat-value">${delayed}</div><div class="stat-label">Delayed</div><div class="stat-sub down">Require immediate action</div></div>
+    <div class="stat-card c-yellow"><div class="stat-icon">⏳</div><div class="stat-value">${awaiting}</div><div class="stat-label">Awaiting Retrieval</div></div>
+    <div class="stat-card c-orange"><div class="stat-icon">🔍</div><div class="stat-value">${unconfirmed}</div><div class="stat-label">Unconfirmed</div><div class="stat-sub">Pending field confirmation</div></div>
+    <div class="stat-card c-purple"><div class="stat-icon">📝</div><div class="stat-value">${issuances.length}</div><div class="stat-label">Total Issuances</div></div>`;
+
+  drawDonut('dash-donut', 'dash-legend', [
+    { label:'Awaiting', val:awaiting, color:'#f0833a' },
+    { label:'Retrieved', val:retrieved, color:'#00c5a3' },
+    { label:'Delayed', val:delayed, color:'#e84040' },
+    { label:'Unconfirmed', val:unconfirmed, color:'#f5c842' }
+  ], total);
+
+  const rc = {}; DB.REGIMES.forEach(r => rc[r] = 0); devices.forEach(d => rc[d.regime] = (rc[d.regime]||0)+1);
+  const maxR = Math.max(...Object.values(rc), 1);
+  document.getElementById('dash-regime-bars').innerHTML = DB.REGIMES.map(r =>
+    `<div class="bar-row"><div class="bar-label">${r}</div><div class="bar-track"><div class="bar-fill" style="width:${(rc[r]/maxR*100).toFixed(1)}%;background:${DB.REG_COLORS[r]};"></div></div><div class="bar-count">${rc[r]}</div></div>`
+  ).join('');
+
+  drawMonthChart('dash-month-chart', devices);
+
+  const notifs = DB.getNotifications().slice(0, 3);
+  const acts = [
+    ...devices.filter(d => d.status === 'Retrieved').slice(-3).map(d => ({ icon:'✅', text:`Device ${d.id} retrieved from ${d.agency}`, time:'Today', color:'var(--accent)' })),
+    ...devices.filter(d => d.isDelayed).slice(0, 3).map(d => ({ icon:'⚠️', text:`${d.id} is ${d.daysOverdue} days overdue – ${d.agency}`, time:'Auto-flagged', color:'var(--red)' })),
+    ...issuances.slice(-3).map(i => ({ icon:'📤', text:`${i.officer} issued ${i.collected} device(s) from ${i.agency}`, time: fmtRelTime(i.createdAt), color:'var(--navy)' })),
+  ].slice(0, 8);
+
+  document.getElementById('dash-activity').innerHTML = acts.length
+    ? acts.map(a => `<div class="log-item"><div style="width:8px;height:8px;border-radius:50%;background:${a.color};flex-shrink:0;margin-top:5px;"></div><div class="log-body"><div style="font-size:13px;">${a.icon} ${a.text}</div></div><div class="log-time">${a.time}</div></div>`).join('')
+    : `<div class="empty-state"><div style="font-size:32px;">📭</div><div style="margin-top:6px;">No recent activity</div></div>`;
+}
+</script>
+</body>
+</html>

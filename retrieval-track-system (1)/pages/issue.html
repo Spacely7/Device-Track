@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Issue Device — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">📤 Issue Device to Officer</div><div class="page-desc">Record device issuances and log incomplete pickup reasons.</div></div>
+    <div class="header-actions">
+      <button class="btn btn-outline btn-sm" onclick="window.location.href='notifications.html'">🔔 Notifications</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:24px;margin-bottom:20px;">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Retrieval Officer</label>
+        <select class="form-select" id="issue-officer" onchange="onIssueOfficer()">
+          <option value="">Select officer</option>
+          <option>Yaw Boateng</option><option>Kojo Rexford</option><option>Elias Brown</option><option>Kofi Brew</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Officer Phone</label>
+        <input class="form-input" id="issue-phone" readonly placeholder="Auto-populates">
+      </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label class="form-label">Agency Name</label>
+        <select class="form-select" id="issue-agency" onchange="onIssueAgency()">
+          <option value="">Select agency</option>
+          <option>COMPASS POWER AFRICA LTD</option><option>KOMENDA SUGAR FACTORY</option><option>RONOR MOTORS</option>
+          <option>WEB HELP GHANA</option><option>DAILY FOOD</option><option>WESTERN BEVERAGES LTD</option>
+          <option>CAVE AND GARDEN</option><option>GLOBAL POLY GHANA</option><option>MIRO TIMBER</option>
+          <option>KING RECYCLING SOLUTIONS LTD</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Qty Available</label>
+        <input class="form-input" id="issue-qty" type="number" readonly placeholder="Auto-populates">
+        <span class="form-hint">Field-confirmed devices for agency</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Collected by Officer</label>
+        <input class="form-input" id="issue-collected" type="number" placeholder="e.g. 5" oninput="calcPending()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pending Retrieval</label>
+        <input class="form-input" id="issue-pending" type="number" readonly value="0">
+        <span class="form-hint">Qty − Collected</span>
+      </div>
+    </div>
+
+    <div class="reason-section" id="reason-section">
+      <div class="reason-title">⚠️ Reason for Incomplete Pickup</div>
+      <p style="font-size:12px;color:#7a5000;margin-bottom:10px;">Officer collected fewer devices than available. Please select a reason:</p>
+      <div class="reason-tags" id="reason-tags">
+        <div class="reason-tag" onclick="pickReason(this,'Device not accessible at location')">📍 Not accessible</div>
+        <div class="reason-tag" onclick="pickReason(this,'Insufficient vehicle capacity')">🚛 Vehicle capacity</div>
+        <div class="reason-tag" onclick="pickReason(this,'Agency site was closed')">🔒 Site closed</div>
+        <div class="reason-tag" onclick="pickReason(this,'Security clearance denied')">🛡️ Security denied</div>
+        <div class="reason-tag" onclick="pickReason(this,'Device damaged / not retrievable')">⚠️ Damaged device</div>
+        <div class="reason-tag" onclick="pickReason(this,'Road or weather conditions')">🌧️ Road/weather</div>
+        <div class="reason-tag" onclick="pickReason(this,'Time constraints')">⏰ Time constraints</div>
+        <div class="reason-tag" onclick="pickReason(this,'Device location mismatch')">🗺️ Location mismatch</div>
+        <div class="reason-tag" onclick="pickReason(this,'Other reason')">✏️ Other</div>
+      </div>
+      <textarea class="form-input" id="reason-text" placeholder="Add additional details..." maxlength="300" style="min-height:68px;resize:vertical;" oninput="document.getElementById('reason-char').textContent=this.value.length+'/300'"></textarea>
+      <div style="font-size:10px;color:var(--text-muted);text-align:right;" id="reason-char">0/300</div>
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="recordIssuance()">📝 Record Issuance</button>
+      <button class="btn btn-outline" onclick="resetIssue()">↺ Reset</button>
+    </div>
+  </div>
+
+  <div class="card" id="issue-log-card" style="display:none;">
+    <div class="card-header">
+      <div class="card-title">📋 Issuance Log</div>
+      <button class="btn btn-outline btn-sm" onclick="loadLog()">🔄 Refresh</button>
+    </div>
+    <div id="issue-log-list"></div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor']);
+let selectedReasonTag = '';
+if (session) {
+  DB.recalcDelays();
+  buildSidebar('issue');
+  loadLog();
+}
+
+function onIssueOfficer() {
+  const o = document.getElementById('issue-officer').value;
+  document.getElementById('issue-phone').value = o ? (DB.OFFICERS_DATA[o]?.phone || '') : '';
+}
+
+function onIssueAgency() {
+  const a = document.getElementById('issue-agency').value;
+  if (!a) { document.getElementById('issue-qty').value = ''; return; }
+  const qty = DB.getDevices().filter(d => d.agency === a && d.fieldConfirmed && d.status === 'Awaiting Retrieval' && !d.isDelayed).length;
+  document.getElementById('issue-qty').value = qty;
+  calcPending();
+}
+
+function calcPending() {
+  const qty = parseInt(document.getElementById('issue-qty').value) || 0;
+  const col = parseInt(document.getElementById('issue-collected').value) || 0;
+  document.getElementById('issue-pending').value = Math.max(0, qty - col);
+  const sec = document.getElementById('reason-section');
+  if (col > 0 && col < qty) sec.classList.add('visible');
+  else { sec.classList.remove('visible'); selectedReasonTag = ''; document.querySelectorAll('.reason-tag').forEach(t => t.classList.remove('selected')); document.getElementById('reason-text').value = ''; document.getElementById('reason-char').textContent = '0/300'; }
+}
+
+function pickReason(el, r) {
+  document.querySelectorAll('.reason-tag').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected'); selectedReasonTag = r;
+}
+
+function resetIssue() {
+  ['issue-officer','issue-agency'].forEach(id => document.getElementById(id).value = '');
+  ['issue-phone','issue-qty','issue-collected'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('issue-pending').value = '0';
+  selectedReasonTag = '';
+  document.getElementById('reason-section').classList.remove('visible');
+  document.getElementById('reason-text').value = '';
+}
+
+function recordIssuance() {
+  const officer = document.getElementById('issue-officer').value;
+  const agency = document.getElementById('issue-agency').value;
+  const qty = parseInt(document.getElementById('issue-qty').value) || 0;
+  const col = parseInt(document.getElementById('issue-collected').value) || 0;
+  if (!officer) { showToast('Select a retrieval officer', 'error'); return; }
+  if (!agency) { showToast('Select an agency', 'error'); return; }
+  if (!col) { showToast('Enter collected quantity', 'error'); return; }
+  if (col > qty) { showToast('Cannot exceed available quantity', 'error'); return; }
+  const pending = qty - col;
+  const customNote = document.getElementById('reason-text').value.trim();
+  const fullReason = [selectedReasonTag, customNote].filter(Boolean).join(' – ') || null;
+  if (pending > 0 && !fullReason) { showToast('Please provide a reason for incomplete pickup', 'error'); return; }
+
+  DB.addIssuance({ officer, agency, qty, collected: col, pending, reason: fullReason, date: DB.fmtISO(DB.today()), issuedBy: session.name });
+  DB.addNotification({ type:'assign', title:`Assignment – ${officer}`, desc:`${officer} collected ${col} device(s) from ${agency}. ${pending > 0 ? pending + ' device(s) remain pending.' : ''}`, officer, agency, tag:'assignment', extra: fullReason ? `⚠️ Incomplete reason: ${fullReason}` : null });
+  showToast(`✅ Issuance recorded for ${officer}`, 'success');
+  resetIssue();
+  loadLog();
+}
+
+function loadLog() {
+  const issuances = DB.getIssuances().slice().reverse();
+  const card = document.getElementById('issue-log-card');
+  if (!issuances.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('issue-log-list').innerHTML = issuances.map(i => {
+    const info = DB.OFFICERS_DATA[i.officer] || { color:'#1a2b5c', init:'??' };
+    return `<div class="log-item">
+      <div class="log-avatar" style="background:${info.color}">${info.init}</div>
+      <div class="log-body">
+        <div class="log-name">${i.officer} → ${i.agency}</div>
+        <div class="log-meta">Collected: <strong>${i.collected}</strong> · Available: <strong>${i.qty}</strong> · Pending: <strong style="color:${i.pending > 0 ? 'var(--red)' : 'var(--accent)'}">${i.pending}</strong></div>
+        ${i.reason ? `<div class="log-reason">⚠️ ${i.reason}</div>` : ''}
+      </div>
+      <div class="log-time">${fmtRelTime(i.createdAt)}</div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

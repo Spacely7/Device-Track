@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Officer Tracker — Retrieval Track</title>
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main">
+  <div class="page-header">
+    <div><div class="page-title">👤 Officer Retrieval Tracker</div><div class="page-desc">View pending retrievals by officer based on issuance records.</div></div>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:16px;">
+    <div class="form-group" style="max-width:320px;">
+      <label class="form-label">Select Retrieval Officer</label>
+      <select class="form-select" id="tracker-officer" onchange="loadOfficer()">
+        <option value="">Select officer</option>
+        <option>Yaw Boateng</option><option>Kojo Rexford</option><option>Elias Brown</option><option>Kofi Brew</option>
+      </select>
+    </div>
+  </div>
+  <div id="tracker-content" style="display:none;">
+    <div class="stats-grid" id="tracker-stats"></div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Pending Retrievals by Agency</div></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Agency</th><th>Destination</th><th>Regime</th><th>Qty Issued</th><th>Collected</th><th>Pending</th><th>Date</th><th>Reason</th></tr></thead>
+        <tbody id="tracker-body"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header"><div class="card-title">Retrieved Devices by This Officer</div></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Device ID</th><th>Agency</th><th>Destination</th><th>Regime</th><th>Retrieved At</th></tr></thead>
+        <tbody id="retrieved-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+<script src="../js/db.js"></script>
+<script src="../js/nav.js"></script>
+<script>
+const session = DB.requireAuth(['Administrator','Supervisor']);
+if (session) { DB.recalcDelays(); buildSidebar('officer'); }
+
+function loadOfficer() {
+  const o = document.getElementById('tracker-officer').value;
+  const c = document.getElementById('tracker-content');
+  if (!o) { c.style.display = 'none'; return; }
+  c.style.display = 'block';
+
+  const myI = DB.getIssuances().filter(i => i.officer === o);
+  const myRet = DB.getDevices().filter(d => d.retrievalOfficer === o);
+  const totQ = myI.reduce((a,b) => a+b.qty, 0);
+  const totC = myI.reduce((a,b) => a+b.collected, 0);
+  const totP = myI.reduce((a,b) => a+b.pending, 0);
+  const info = DB.OFFICERS_DATA[o] || { color:'#1a2b5c' };
+
+  document.getElementById('tracker-stats').innerHTML = `
+    <div class="stat-card c-navy"><div class="stat-icon">📝</div><div class="stat-value">${myI.length}</div><div class="stat-label">Issuances</div></div>
+    <div class="stat-card c-accent"><div class="stat-icon">✅</div><div class="stat-value">${totC}</div><div class="stat-label">Collected</div></div>
+    <div class="stat-card c-red"><div class="stat-icon">⏳</div><div class="stat-value">${totP}</div><div class="stat-label">Pending</div></div>
+    <div class="stat-card c-purple"><div class="stat-icon">📦</div><div class="stat-value">${myRet.length}</div><div class="stat-label">Retrieved</div></div>`;
+
+  const tb = document.getElementById('tracker-body');
+  if (!myI.length) {
+    tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div style="font-size:32px;">📭</div><div>No issuances for this officer yet.</div></div></td></tr>`;
+  } else {
+    tb.innerHTML = myI.map(i => {
+      const d = DB.getDevices().find(x => x.agency === i.agency);
+      return `<tr>
+        <td>${i.agency}</td>
+        <td class="td-muted">${d?.dest || '–'}</td>
+        <td>${d ? regBadge(d.regime) : '–'}</td>
+        <td>${i.qty}</td>
+        <td>${i.collected}</td>
+        <td><strong style="color:${i.pending>0?'var(--red)':'var(--accent)'}">${i.pending}</strong></td>
+        <td class="td-muted">${fmtDate(i.date)}</td>
+        <td style="font-size:11px;color:var(--text-muted);max-width:160px;">${i.reason || '–'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const rb = document.getElementById('retrieved-body');
+  if (!myRet.length) {
+    rb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div style="font-size:28px;">📦</div><div>No retrievals yet.</div></div></td></tr>`;
+  } else {
+    rb.innerHTML = myRet.map(d => `<tr>
+      <td class="td-id" onclick="window.location.href='timeline.html?id=${d.id}'">${d.id}</td>
+      <td>${d.agency}</td>
+      <td class="td-muted">${d.dest}</td>
+      <td>${regBadge(d.regime)}</td>
+      <td class="td-muted">${d.retrievalTime ? fmtDateTime(d.retrievalTime) : '–'}</td>
+    </tr>`).join('');
+  }
+}
+</script>
+</body>
+</html>

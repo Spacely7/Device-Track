@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Retrieval Track</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f1a3c;--accent:#00c5a3;--red:#e84040;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#060e20;color:#e8eaf6;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,197,163,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,197,163,.05) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;}
+.bg-blob1{position:fixed;top:-20%;right:-10%;width:600px;height:600px;background:radial-gradient(circle,rgba(0,197,163,.1),transparent 60%);pointer-events:none;animation:float1 8s ease-in-out infinite;}
+.bg-blob2{position:fixed;bottom:-20%;left:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(26,43,92,.35),transparent 60%);pointer-events:none;animation:float2 10s ease-in-out infinite;}
+@keyframes float1{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-30px) scale(1.05);}}
+@keyframes float2{0%,100%{transform:translateY(0);}50%{transform:translateY(20px);}}
+.login-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:44px;width:100%;max-width:440px;backdrop-filter:blur(16px);box-shadow:0 32px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);animation:slideUp .5s ease forwards;position:relative;z-index:10;}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+.logo-area{text-align:center;margin-bottom:32px;}
+.logo-icon{display:inline-flex;width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--accent),#007a67);align-items:center;justify-content:center;font-size:28px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,197,163,.3);}
+.logo-title{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;}
+.logo-sub{font-size:12px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:.08em;text-transform:uppercase;}
+.form-group{margin-bottom:16px;}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-bottom:7px;}
+.input-wrap{position:relative;}
+.input-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.5;}
+input[type=text],input[type=password]{width:100%;padding:12px 14px 12px 38px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:11px;color:#e8eaf6;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:all .2s;}
+input[type=text]:focus,input[type=password]:focus{border-color:var(--accent);background:rgba(0,197,163,.05);box-shadow:0 0 0 3px rgba(0,197,163,.1);}
+input::placeholder{color:rgba(255,255,255,.22);}
+.show-pass{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:14px;padding:4px;}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),#007a67);border:none;border-radius:11px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;cursor:pointer;margin-top:24px;transition:all .2s;}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,197,163,.35);}
+.btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.error-msg{background:rgba(232,64,64,.1);border:1px solid rgba(232,64,64,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#ff8080;margin-top:12px;display:none;}
+.error-msg.show{display:block;}
+.quick-login{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07);}
+.quick-title{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;text-align:center;}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.quick-btn{padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;color:rgba(255,255,255,.6);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .16s;text-align:left;display:flex;align-items:center;gap:7px;}
+.quick-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
+.quick-badge{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:800;margin-left:auto;}
+.qb-admin{background:rgba(232,64,64,.2);color:#ff8080;}
+.qb-super{background:rgba(100,140,255,.15);color:#7eb3ff;}
+.qb-field{background:rgba(240,131,58,.15);color:#ffaa70;}
+.qb-ret{background:rgba(0,197,163,.15);color:#00c5a3;}
+.version{text-align:center;margin-top:20px;font-size:10px;color:rgba(255,255,255,.18);letter-spacing:.06em;}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-blob1"></div>
+<div class="bg-blob2"></div>
+<div class="login-card">
+  <div class="logo-area">
+    <div class="logo-icon">📦</div>
+    <div class="logo-title">Retrieval Track</div>
+    <div class="logo-sub">Port Device Management System</div>
+  </div>
+  <div class="form-group">
+    <label>Username</label>
+    <div class="input-wrap">
+      <span class="input-icon">👤</span>
+      <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>Password</label>
+    <div class="input-wrap">
+      <span class="input-icon">🔒</span>
+      <input type="password" id="password" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="show-pass" onclick="togglePass()" id="pass-eye">👁️</button>
+    </div>
+  </div>
+  <div class="error-msg" id="error-msg"></div>
+  <button class="btn-login" onclick="doLogin()" id="login-btn">Sign In →</button>
+  <div class="quick-login">
+    <div class="quick-title">Quick Demo Login</div>
+    <div class="quick-grid">
+      <button class="quick-btn" onclick="quickLogin('admin','admin123')"><span>Admin User</span><span class="quick-badge qb-admin">Admin</span></button>
+      <button class="quick-btn" onclick="quickLogin('ama','pass123')"><span>Ama Owusu</span><span class="quick-badge qb-super">Supervisor</span></button>
+      <button class="quick-btn" onclick="quickLogin('elias','pass123')"><span>Elias Brown</span><span class="quick-badge qb-field">Field</span></button>
+      <button class="quick-btn" onclick="quickLogin('yaw','pass123')"><span>Yaw Boateng</span><span class="quick-badge qb-ret">Retrieval</span></button>
+    </div>
+  </div>
+  <div class="version">RETRIEVAL TRACK v2.0 · PORT OPERATIONS</div>
+</div>
+<script src="../js/db.js"></script>
+<script>
+if (DB.getSession()) window.location.href = 'dashboard.html';
+function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('error-msg');
+  if (!username || !password) { err.textContent = 'Please enter both username and password.'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…'; err.classList.remove('show');
+  setTimeout(() => {
+    const user = DB.getUserByCredentials(username, password);
+    if (user) {
+      DB.setSession({ id:user.id, name:user.name, username:user.username, role:user.role, color:user.color, init:user.init });
+      DB.addAudit('LOGIN', `${user.name} logged in`, user.name, { role:user.role });
+      window.location.href = 'dashboard.html';
+    } else {
+      err.textContent = 'Invalid username or password. Please try again.';
+      err.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Sign In →';
+      document.getElementById('password').value = '';
+    }
+  }, 600);
+}
+function quickLogin(u, p) { document.getElementById('username').value = u; document.getElementById('password').value = p; setTimeout(doLogin, 100); }
+function togglePass() { const inp = document.getElementById('password'); inp.type = inp.type === 'password' ? 'text' : 'password'; document.getElementById('pass-eye').textContent = inp.type === 'password' ? '👁️' : '🙈'; }
+</script>
+</body>
+</html>
