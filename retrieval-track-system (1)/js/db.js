@@ -182,7 +182,7 @@ const DB = {
       { id:'u2', name:'Ama Owusu',    username:'ama',    password:'pass123',   role:'Supervisor',       color:'#e84040', init:'AO', contact:'233201234567',     active:true, createdAt:this.now() },
       { id:'u3', name:'Yaw Boateng',  username:'yaw',    password:'pass123',   role:'Retrieval Officer',color:'#1a2b5c', init:'YB', contact:'233597563674',     active:true, createdAt:this.now() },
       { id:'u4', name:'Kojo Rexford', username:'kojo',   password:'pass123',   role:'Retrieval Officer',color:'#007a67', init:'KR', contact:'233206748677',     active:true, createdAt:this.now() },
-      { id:'u5', name:'Elias Brown',  username:'elias',  password:'pass123',   role:'Field Officer',    color:'#8a4000', init:'EB', contact:'233244675874',     active:true, createdAt:this.now() },
+      { id:'u5', name:'Elias Brown',  username:'elias',  password:'pass123',   role:'Office Retrieval',    color:'#8a4000', init:'EB', contact:'233244675874',     active:true, createdAt:this.now() },
       { id:'u6', name:'Kofi Brew',    username:'kofi',   password:'pass123',   role:'Retrieval Officer',color:'#6b00aa', init:'KB', contact:'233509765467',     active:true, createdAt:this.now() },
     ]);
 
@@ -246,7 +246,7 @@ const DB = {
         createdAt: this.now(),
         auditLog: [
           { event:'Device Issued', detail:`Assigned to ${s.agency} – ${s.dest} (${s.regime})`, time: this.fmtDate(issued), color:'#1a2b5c' },
-          { event: s.fc ? 'Field Confirmed' : 'Pending Confirmation', detail: s.fc ? `Confirmed by ${fcBy}` : 'Awaiting field officer confirmation', time: this.fmtDate(addD(issued, 1)), color: s.fc ? '#007a67' : '#f5c842' }
+          { event: s.fc ? 'Field Confirmed' : 'Pending Confirmation', detail: s.fc ? `Confirmed by ${fcBy}` : 'Awaiting Office Retrieval confirmation', time: this.fmtDate(addD(issued, 1)), color: s.fc ? '#007a67' : '#f5c842' }
         ]
       });
     });
@@ -281,7 +281,7 @@ DB.seed();
 const ROLES = {
   Administrator:     { dashboard:true, issue:true, officer:true, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:true, analytics:true, performance:true, roles:true, sla:true, bulkimport:true, sms:true, mapview:true, notifications:true, audit:true },
   Supervisor:        { dashboard:true, issue:true, officer:true, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:true, analytics:true, performance:true, roles:false, sla:false, bulkimport:true, sms:true, mapview:true, notifications:true, audit:false },
-  'Field Officer':   { dashboard:true, issue:false, officer:false, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },
+  'Office Retrieval':   { dashboard:true, issue:false, officer:false, fieldconfirm:true, retrieval:true, delayed:true, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },
   'Retrieval Officer':{ dashboard:true, issue:true, officer:true, fieldconfirm:false, retrieval:false, delayed:false, timeline:true, reports:false, analytics:false, performance:false, roles:false, sla:false, bulkimport:false, sms:false, mapview:true, notifications:true, audit:false },};
 function canAccess(page) {
   const s = DB.getSession();

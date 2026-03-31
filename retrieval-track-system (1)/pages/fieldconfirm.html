@@ -11,7 +11,7 @@
 <aside class="sidebar" id="sidebar"></aside>
 <main class="main">
   <div class="page-header">
-    <div><div class="page-title">✅ Field Officer Confirmation</div><div class="page-desc">Field officers confirm device presence at site before entering retrieval queue.</div></div>
+    <div><div class="page-title">✅ Office Retrieval Confirmation</div><div class="page-desc">Office Retrievals confirm device presence at site before entering retrieval queue.</div></div>
     <div class="header-actions">
       <button class="refresh-btn" onclick="render()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:17px;padding:5px;border-radius:7px;">🔄</button>
     </div>
@@ -34,7 +34,7 @@
 <script src="../js/db.js"></script>
 <script src="../js/nav.js"></script>
 <script>
-const session = DB.requireAuth(['Administrator','Supervisor','Field Officer']);
+const session = DB.requireAuth(['Administrator','Supervisor','Office Retrieval']);
 let curPage = 1;
 if (session) { DB.recalcDelays(); buildSidebar('fieldconfirm'); render(); }
 
