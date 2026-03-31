@@ -86,8 +86,8 @@ if (session) { DB.recalcDelays(); buildSidebar('roles'); renderRoles(); renderUs
 const ROLE_DEFS = [
   { name:'Administrator', color:'#e84040', bg:'rgba(232,64,64,.1)', perms:{ Dashboard:true, 'Issue Device':true, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:true, Analytics:true, Performance:true, 'Roles & Users':true, 'SLA Rules':true, 'Bulk Import':true, SMS:true } },
   { name:'Supervisor',    color:'#1a2b5c', bg:'rgba(26,43,92,.1)',  perms:{ Dashboard:true, 'Issue Device':true, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:true, Analytics:true, Performance:true, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':true, SMS:true } },
-  { name:'Retrieval Officer', color:'#007a67', bg:'rgba(0,197,163,.1)', perms:{ Dashboard:true, 'Issue Device':false, 'Field Confirm':false, Retrieval:true, Delayed:true, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
-  { name:'Field Officer', color:'#8a4000', bg:'rgba(240,131,58,.12)', perms:{ Dashboard:true, 'Issue Device':false, 'Field Confirm':true, Retrieval:false, Delayed:false, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
+  { name:'Retrieval Officer', color:'#007a67', bg:'rgba(0,197,163,.1)', perms:{ Dashboard:true, 'Issue Device':true, 'Field Confirm':false, Retrieval:false, Delayed:false, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
+  { name:'Field Officer', color:'#8a4000', bg:'rgba(240,131,58,.12)', perms:{ Dashboard:true, 'Issue Device':false, 'Field Confirm':true, Retrieval:true, Delayed:true, Reports:false, Analytics:false, Performance:false, 'Roles & Users':false, 'SLA Rules':false, 'Bulk Import':false, SMS:false } },
 ];
 
 function renderRoles() {
