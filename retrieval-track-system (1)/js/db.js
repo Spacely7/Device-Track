@@ -246,7 +246,7 @@ const DB = {
         createdAt: this.now(),
         auditLog: [
           { event:'Device Issued', detail:`Assigned to ${s.agency} – ${s.dest} (${s.regime})`, time: this.fmtDate(issued), color:'#1a2b5c' },
-          { event: s.fc ? 'Field Confirmed' : 'Pending Confirmation', detail: s.fc ? `Confirmed by ${fcBy}` : 'Awaiting Field Officer confirmation', time: this.fmtDate(addD(issued, 1)), color: s.fc ? '#007a67' : '#f5c842' }
+          { event: s.fc ? 'Field Retrieved' : 'Pending Field Retrieval', detail: s.fc ? `Retrieved by ${fcBy}` : 'Awaiting Field Officer Retrieval', time: this.fmtDate(addD(issued, 1)), color: s.fc ? '#007a67' : '#f5c842' }
         ]
       });
     });
