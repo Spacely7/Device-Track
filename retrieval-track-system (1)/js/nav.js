@@ -68,7 +68,7 @@ function buildSidebar(activePage) {
       <div class="logo-icon">📦</div>
       <div>
         <div class="logo-text">Retrieval Track</div>
-        <div class="logo-sub">Port Device Management</div>
+        <div class="logo-sub">E-tracking Device Management</div>
       </div>
     </div>
     <nav class="sidebar-nav">${html}</nav>
