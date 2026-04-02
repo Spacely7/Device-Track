@@ -17,7 +17,7 @@
     </div>
     <div class="header-actions">
       <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
-      <button class="btn btn-accent btn-sm" onclick="window.location.href='issue.html'">+ Issue Device</button>
+      <button class="btn btn-accent btn-sm" onclick="window.location.href='issue.html'">+ Retrieve Device</button>
     </div>
   </div>
   <div class="stats-grid" id="dash-stats"></div>
@@ -66,7 +66,7 @@ if (session) {
     <div class="stat-card c-red"><div class="stat-icon">⚠️</div><div class="stat-value">${delayed}</div><div class="stat-label">Delayed</div><div class="stat-sub down">Require immediate action</div></div>
     <div class="stat-card c-yellow"><div class="stat-icon">⏳</div><div class="stat-value">${awaiting}</div><div class="stat-label">Awaiting Retrieval</div></div>
     <div class="stat-card c-orange"><div class="stat-icon">🔍</div><div class="stat-value">${unconfirmed}</div><div class="stat-label">Unconfirmed</div><div class="stat-sub">Pending field confirmation</div></div>
-    <div class="stat-card c-purple"><div class="stat-icon">📝</div><div class="stat-value">${issuances.length}</div><div class="stat-label">Total Issuances</div></div>`;
+    <div class="stat-card c-purple"><div class="stat-icon">📝</div><div class="stat-value">${issuances.length}</div><div class="stat-label">Total Retrieved(Field)</div></div>`;
 
   drawDonut('dash-donut', 'dash-legend', [
     { label:'Awaiting', val:awaiting, color:'#f0833a' },
